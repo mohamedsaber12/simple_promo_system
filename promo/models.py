@@ -19,7 +19,6 @@ class User(AbstractUser):
         _("Type"), max_length=50, choices=Types.choices, default=base_type
     )
 
-    name = models.CharField(_("Name of User"), blank=True, max_length=255)
     address = models.CharField(_("Name of User"), blank=True, max_length=255)
 
 class AdministratorUser(User):
