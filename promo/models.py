@@ -22,11 +22,28 @@ class User(AbstractUser):
     address = models.CharField(_("Name of User"), blank=True, max_length=255)
 
 class AdministratorUser(User):
+
+    class Meta:
+        verbose_name = "Administrator User"
+
+
     base_type = User.Types.ADMINISTRATOR
 
+    def save(self, *args, **kwargs):
+        self.type = User.Types.ADMINISTRATOR
+        super(AdministratorUser, self).save(*args, **kwargs)
+
 class NormalUser(User):
+
+    class Meta:
+        verbose_name = "Normal User"
+
     base_type = User.Types.NORMAL
     mobile_number = PhoneField(blank=True, help_text='user mobile number')
+
+    def save(self, *args, **kwargs):
+        self.type = User.Types.NORMAL
+        super(NormalUser, self).save(*args, **kwargs)
 
 # End of users model 
 
@@ -49,11 +66,11 @@ class Promo(models.Model):
     promo_amount = models.DecimalField(max_digits=10, decimal_places=2)
     is_active = models.BooleanField(default=True, choices=BOOL_CHOICES)
 
-    def use_points(self, points_to_use):
+    def use_points(self, points_to_use=0):
         # check if points to use is less than or equal promo amount
         if (points_to_use > self.promo_amount):
             raise ValidationError(f"Your promo points is less than {points_to_use}")
         remaining_points = self.promo_amount - points_to_use
         self.promo_amount = remaining_points
-        self.save()
+        super(Promo, self).save()
 

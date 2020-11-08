@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'promo',
     "phone_field",
+    "rest_framework",
 ]
 
 MIDDLEWARE = [

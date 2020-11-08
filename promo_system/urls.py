@@ -13,9 +13,28 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, re_path, include
+from promo.views import PromoViewSet
+
+promo_create = PromoViewSet.as_view({
+    'post': 'create',
+})
+promo_detail = PromoViewSet.as_view({
+    'get': 'retrieve',
+    'patch': 'partial_update',
+    'delete': 'destroy'
+})
+
+
+api_urlpatterns = [
+    path("promo/", promo_create, name="promo-create"),
+    path("promo/<int:pk>/", promo_detail, name="promo-details"),
+]
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    re_path(r"^api/", include(api_urlpatterns)),
 ]
