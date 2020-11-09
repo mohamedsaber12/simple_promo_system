@@ -2,7 +2,7 @@ import factory
 from django.contrib.auth import get_user_model
 from factory import DjangoModelFactory, Faker
 from faker import Faker as Fake
-from .models import NormalUser, AdministratorUser, Promo
+from .models import NormalUser, AdministratorUser, Promo, PromoUse
 
 User = get_user_model()
 
@@ -44,3 +44,11 @@ class PromoFactory(DjangoModelFactory):
 
     class Meta:
         model = Promo
+
+
+class PromoUseFactory(DjangoModelFactory):
+    promo = factory.SubFactory("promo.factories.PromoFactory")
+    number_of_points = fake.pyint()
+
+    class Meta:
+        model = PromoUse

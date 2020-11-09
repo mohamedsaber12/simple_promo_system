@@ -1,7 +1,7 @@
 from django.urls import reverse
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
-from .factories import NormalUserFactory, AdministratorUserFactory, PromoFactory
+from .factories import NormalUserFactory, AdministratorUserFactory, PromoFactory, PromoUseFactory
 from .models import Promo
 
 # Create your tests here.
@@ -169,42 +169,163 @@ class TestListPromoAdminUser(APITestCase):
         self.client.force_authenticate(self.administrator)
         response = self.client.get(self.promo_list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(Promo.objects.all()), 2)
+        self.assertEqual(len(response.json()), 2)
 
-    class TestMeListPromoNormalUser(APITestCase):
-        def setUp(self):
-            super().setUp()
-            self.client = APIClient()
-            self.normal_user = NormalUserFactory(username="user1")
-            self.normal_user2 = NormalUserFactory(username="user")
-            self.normal_user.set_password("Awesome1")
-            self.normal_user.save()
 
-            self.administrator = AdministratorUserFactory(username="user2")
-            self.administrator.set_password("Awesome2")
-            self.administrator.save()
+class TestMeListPromoNormalUser(APITestCase):
+    def setUp(self):
+        super().setUp()
+        self.client = APIClient()
+        self.normal_user = NormalUserFactory(username="user1")
+        self.normal_user2 = NormalUserFactory(username="user")
+        self.normal_user.set_password("Awesome1")
+        self.normal_user.save()
 
-            self.promo = PromoFactory(user=self.normal_user)
-            self.promo2 = PromoFactory(user=self.normal_user2)
+        self.administrator = AdministratorUserFactory(username="user2")
+        self.administrator.set_password("Awesome2")
+        self.administrator.save()
 
-            self.promo_list_url = reverse("promo-list")
+        self.promo = PromoFactory(user=self.normal_user)
+        self.promo2 = PromoFactory(user=self.normal_user2)
 
-        def test_lis_promos_is_existing(self):
-            response = self.client.get(self.promo_list_url)
-            self.assertNotEqual(response.status_code,
-                                status.HTTP_404_NOT_FOUND)
+        self.promo_me_list_url = reverse("promo-me-list")
 
-        def test_lis_promos_with_no_auth(self):
-            response = self.client.get(self.promo_list_url)
-            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    def test_me_list_is_existing(self):
+        response = self.client.get(self.promo_me_list_url)
+        self.assertNotEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-        def test_lis_promos_with_normal_user(self):
-            self.client.force_authenticate(self.normal_user)
-            response = self.client.get(self.promo_list_url)
-            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    def test_me_list_with_no_auth(self):
+        response = self.client.get(self.promo_me_list_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        def test_lis_promos_success(self):
-            self.client.force_authenticate(self.administrator)
-            response = self.client.get(self.promo_list_url)
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
-            self.assertEqual(len(Promo.objects.all()), 2)
+    def test_me_list_with_admin_user(self):
+        self.client.force_authenticate(self.administrator)
+        response = self.client.get(self.promo_me_list_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_me_list_success(self):
+        self.client.force_authenticate(self.normal_user)
+        response = self.client.get(self.promo_me_list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.json()), 1)
+
+
+class TestPromoPointsDetailView(APITestCase):
+    def setUp(self):
+        super().setUp()
+        self.client = APIClient()
+        self.normal_user = NormalUserFactory(username="user1")
+        self.normal_user2 = NormalUserFactory(username="user")
+        self.normal_user.set_password("Awesome1")
+        self.normal_user.save()
+
+        self.administrator = AdministratorUserFactory(username="user2")
+        self.administrator.set_password("Awesome2")
+        self.administrator.save()
+
+        self.promo = PromoFactory(user=self.normal_user)
+
+        self.promo_points_url = reverse("promo-points-detail",
+                                        args=[self.promo.pk])
+
+    def test_promo_points_is_existing(self):
+        response = self.client.get(self.promo_points_url)
+        self.assertNotEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_promo_points_with_no_auth(self):
+        response = self.client.get(self.promo_points_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_promo_points_with_admin_user(self):
+        self.client.force_authenticate(self.administrator)
+        response = self.client.get(self.promo_points_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_promo_points_with_normal_user_wrong_ownership(self):
+        self.client.force_authenticate(self.normal_user2)
+        response = self.client.get(self.promo_points_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_promo_points_with_normal_user_success(self):
+        self.client.force_authenticate(self.normal_user)
+        response = self.client.get(self.promo_points_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(response.json()["remaining_points"])
+        self.assertEqual(response.json()["remaining_points"],
+                         self.promo.promo_amount)
+
+    def test_promo_points_with_normal_user_success(self):
+        self.promo.promo_amount = 200
+        self.promo.save()
+        PromoUseFactory(promo=self.promo, number_of_points=50)
+        self.client.force_authenticate(self.normal_user)
+        response = self.client.get(self.promo_points_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(response.json()["remaining_points"])
+        self.assertEqual(response.json()["remaining_points"], 150.0)
+
+
+class TestPromoPointsUse(APITestCase):
+    def setUp(self):
+        super().setUp()
+        self.client = APIClient()
+        self.normal_user = NormalUserFactory(username="user1")
+        self.normal_user2 = NormalUserFactory(username="user")
+        self.normal_user.set_password("Awesome1")
+        self.normal_user.save()
+
+        self.administrator = AdministratorUserFactory(username="user2")
+        self.administrator.set_password("Awesome2")
+        self.administrator.save()
+
+        self.promo = PromoFactory(user=self.normal_user)
+
+        self.promo_points_use_url = reverse("promo-points-use",
+                                            args=[self.promo.pk])
+
+    def test_promo_points_use_is_existing(self):
+        response = self.client.post(self.promo_points_use_url)
+        self.assertNotEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_promo_points_use_with_no_auth(self):
+        response = self.client.post(self.promo_points_use_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_promo_points_use_with_admin_user(self):
+        self.client.force_authenticate(self.administrator)
+        response = self.client.post(self.promo_points_use_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_promo_points_use_with_normal_user_wrong_ownership(self):
+        self.client.force_authenticate(self.normal_user2)
+        response = self.client.post(self.promo_points_use_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_promo_points_use_with_normal_user_without_payload(self):
+        self.client.force_authenticate(self.normal_user)
+        response = self.client.post(self.promo_points_use_url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json()["points_to_use"][0],
+                         "This field is required.")
+
+    def test_promo_points_use_points_more_than_remaining(self):
+        self.promo.promo_amount = 200
+        self.promo.save()
+        self.client.force_authenticate(self.normal_user)
+        response = self.client.post(self.promo_points_use_url,
+                                    {"points_to_use": 300})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json()["points_to_use"][0],
+                         "remaining points is less than 300 it's 200.00")
+
+    def test_promo_points_use_points_make_sure_that_remaining_points_decrease(
+            self):
+        self.promo.promo_amount = 320
+        self.promo.save()
+        self.client.force_authenticate(self.normal_user)
+        response = self.client.post(self.promo_points_use_url,
+                                    {"points_to_use": 300})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["remaining_points"], 20.0)
+        self.promo.refresh_from_db()
+        self.assertEqual(self.promo.remaining_points, 20.0)

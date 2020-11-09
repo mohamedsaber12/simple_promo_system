@@ -68,11 +68,18 @@ class Promo(models.Model):
     promo_amount = models.DecimalField(max_digits=10, decimal_places=2)
     is_active = models.BooleanField(default=True, choices=BOOL_CHOICES)
 
-    def use_points(self, points_to_use=0):
-        # check if points to use is less than or equal promo amount
-        if (points_to_use > self.promo_amount):
-            raise ValidationError(
-                f"Your promo points is less than {points_to_use}")
-        remaining_points = self.promo_amount - points_to_use
-        self.promo_amount = remaining_points
-        super(Promo, self).save()
+    @property
+    def total_used_points(self):
+        return sum(p.number_of_points for p in self.promos_use.all())
+
+    @property
+    def remaining_points(self):
+        return self.promo_amount - self.total_used_points
+
+
+class PromoUse(models.Model):
+    promo = models.ForeignKey(Promo,
+                              on_delete=models.CASCADE,
+                              related_name="promos_use")
+    number_of_points = models.DecimalField(max_digits=10, decimal_places=1)
+    creation_time = models.DateTimeField(auto_now_add=True)
