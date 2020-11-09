@@ -5,8 +5,8 @@ from django.utils.translation import gettext_lazy as _
 from phone_field import PhoneField
 from django.core.exceptions import ValidationError
 
+# Users Models
 
-# Users Models 
 
 class User(AbstractUser):
     class Types(models.TextChoices):
@@ -15,17 +15,17 @@ class User(AbstractUser):
 
     base_type = Types.ADMINISTRATOR
 
-    type = models.CharField(
-        _("Type"), max_length=50, choices=Types.choices, default=base_type
-    )
+    type = models.CharField(_("Type"),
+                            max_length=50,
+                            choices=Types.choices,
+                            default=base_type)
 
     address = models.CharField(_("Name of User"), blank=True, max_length=255)
 
-class AdministratorUser(User):
 
+class AdministratorUser(User):
     class Meta:
         verbose_name = "Administrator User"
-
 
     base_type = User.Types.ADMINISTRATOR
 
@@ -33,8 +33,8 @@ class AdministratorUser(User):
         self.type = User.Types.ADMINISTRATOR
         super(AdministratorUser, self).save(*args, **kwargs)
 
-class NormalUser(User):
 
+class NormalUser(User):
     class Meta:
         verbose_name = "Normal User"
 
@@ -45,9 +45,11 @@ class NormalUser(User):
         self.type = User.Types.NORMAL
         super(NormalUser, self).save(*args, **kwargs)
 
-# End of users model 
 
-# Promo Model 
+# End of users model
+
+# Promo Model
+
 
 class Promo(models.Model):
     BOOL_CHOICES = [(True, "Yes"), (False, "No")]
@@ -69,8 +71,8 @@ class Promo(models.Model):
     def use_points(self, points_to_use=0):
         # check if points to use is less than or equal promo amount
         if (points_to_use > self.promo_amount):
-            raise ValidationError(f"Your promo points is less than {points_to_use}")
+            raise ValidationError(
+                f"Your promo points is less than {points_to_use}")
         remaining_points = self.promo_amount - points_to_use
         self.promo_amount = remaining_points
         super(Promo, self).save()
-

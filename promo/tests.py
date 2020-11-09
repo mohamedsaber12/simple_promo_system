@@ -19,7 +19,7 @@ class TestPromoCreate(APITestCase):
         self.administrator.set_password("Awesome2")
         self.administrator.save()
 
-        self.promo_create_url = reverse("promo-create",)
+        self.promo_create_url = reverse("promo-list", )
 
     def test_create_promo_is_existing(self):
         response = self.client.post(self.promo_create_url)
@@ -69,7 +69,7 @@ class TestPromoUpdate(APITestCase):
 
         self.promo = PromoFactory()
 
-        self.promo_update_url = reverse("promo-details", args=[self.promo.pk])
+        self.promo_update_url = reverse("promo-detail", args=[self.promo.pk])
 
     def test_update_promo_is_existing(self):
         response = self.client.patch(self.promo_update_url)
@@ -111,7 +111,7 @@ class TestPromoDelete(APITestCase):
 
         self.promo = PromoFactory()
 
-        self.promo_delete_url = reverse("promo-details", args=[self.promo.pk])
+        self.promo_delete_url = reverse("promo-detail", args=[self.promo.pk])
 
     def test_delete_promo_is_existing(self):
         response = self.client.delete(self.promo_delete_url)
@@ -132,3 +132,79 @@ class TestPromoDelete(APITestCase):
         response = self.client.delete(self.promo_delete_url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(len(Promo.objects.all()), 0)
+
+
+class TestListPromoAdminUser(APITestCase):
+    def setUp(self):
+        super().setUp()
+        self.client = APIClient()
+        self.normal_user = NormalUserFactory(username="user1")
+        self.normal_user2 = NormalUserFactory(username="user")
+        self.normal_user.set_password("Awesome1")
+        self.normal_user.save()
+
+        self.administrator = AdministratorUserFactory(username="user2")
+        self.administrator.set_password("Awesome2")
+        self.administrator.save()
+
+        self.promo = PromoFactory(user=self.normal_user)
+        self.promo2 = PromoFactory(user=self.normal_user2)
+
+        self.promo_list_url = reverse("promo-list")
+
+    def test_lis_promos_is_existing(self):
+        response = self.client.get(self.promo_list_url)
+        self.assertNotEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_lis_promos_with_no_auth(self):
+        response = self.client.get(self.promo_list_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_lis_promos_with_normal_user(self):
+        self.client.force_authenticate(self.normal_user)
+        response = self.client.get(self.promo_list_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_lis_promos_success(self):
+        self.client.force_authenticate(self.administrator)
+        response = self.client.get(self.promo_list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(Promo.objects.all()), 2)
+
+    class TestMeListPromoNormalUser(APITestCase):
+        def setUp(self):
+            super().setUp()
+            self.client = APIClient()
+            self.normal_user = NormalUserFactory(username="user1")
+            self.normal_user2 = NormalUserFactory(username="user")
+            self.normal_user.set_password("Awesome1")
+            self.normal_user.save()
+
+            self.administrator = AdministratorUserFactory(username="user2")
+            self.administrator.set_password("Awesome2")
+            self.administrator.save()
+
+            self.promo = PromoFactory(user=self.normal_user)
+            self.promo2 = PromoFactory(user=self.normal_user2)
+
+            self.promo_list_url = reverse("promo-list")
+
+        def test_lis_promos_is_existing(self):
+            response = self.client.get(self.promo_list_url)
+            self.assertNotEqual(response.status_code,
+                                status.HTTP_404_NOT_FOUND)
+
+        def test_lis_promos_with_no_auth(self):
+            response = self.client.get(self.promo_list_url)
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        def test_lis_promos_with_normal_user(self):
+            self.client.force_authenticate(self.normal_user)
+            response = self.client.get(self.promo_list_url)
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        def test_lis_promos_success(self):
+            self.client.force_authenticate(self.administrator)
+            response = self.client.get(self.promo_list_url)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(len(Promo.objects.all()), 2)

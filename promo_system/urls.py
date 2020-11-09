@@ -16,9 +16,10 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, re_path, include
-from promo.views import PromoViewSet
+from promo.views import PromoViewSet, PromoMeListView
 
 promo_create = PromoViewSet.as_view({
+    'get': 'list',
     'post': 'create',
 })
 promo_detail = PromoViewSet.as_view({
@@ -27,12 +28,11 @@ promo_detail = PromoViewSet.as_view({
     'delete': 'destroy'
 })
 
-
 api_urlpatterns = [
-    path("promo/", promo_create, name="promo-create"),
-    path("promo/<int:pk>/", promo_detail, name="promo-details"),
+    path("promo/", promo_create, name="promo-list"),
+    path("promo/<int:pk>/", promo_detail, name="promo-detail"),
+    path("me/promo", PromoMeListView.as_view(), name="promo-me-list"),
 ]
-
 
 urlpatterns = [
     path('admin/', admin.site.urls),
